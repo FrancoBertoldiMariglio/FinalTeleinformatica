@@ -1,0 +1,49 @@
+apiVersion: apps/v1
+kind: StatefulSet
+metadata:
+  name: mstream-app
+spec:
+  serviceName: "mstream-service"
+  replicas: 1
+  selector:
+    matchLabels:
+      app: mstream
+  template:
+    metadata:
+      labels:
+        app: mstream
+    spec:
+      securityContext:
+        fsGroup: 0   # Asegura que el grupo tiene acceso de lectura/escritura en el directorio
+      volumes:
+      - name: music-volume
+        persistentVolumeClaim:
+          claimName: mstream-pvc
+      - name: config
+        emptyDir: {}
+      initContainers:
+      - name: init-music
+        image: curlimages/curl:7.78.0
+        command: ['sh', '-c']
+        args:
+          - |
+            echo "Starting download..." &&
+            curl -o /music/Brendan_Kinsella_-_02_-_Bach_-_Aria_Variata_BVW_989_-_Variation_No_2.mp3 https://github.com/FrancoBertoldiMariglio/raw/main/Brendan_Kinsella_-_02_-_Bach_-_Aria_Variata_BVW_989_-_Variation_No_2.mp3 &&
+            curl -o /music/Child-Dreams.mp3 https://github.com/FrancoBertoldiMariglio/raw/main/Child-Dreams.mp3 &&
+            echo "Download complete."
+        volumeMounts:
+        - name: music-volume
+          mountPath: /music
+        securityContext:
+          runAsUser: 0  # Ejecutar como root
+      containers:
+      - name: mstream
+        image: linuxserver/mstream
+        ports:
+        - containerPort: 3000
+        volumeMounts:
+        - name: music-volume
+          mountPath: /music
+        - name: config
+          mountPath: /config
+
